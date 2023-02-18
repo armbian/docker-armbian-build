@@ -4,6 +4,6 @@
   </a><br>
   <strong>Armbian Linux Docker Images Production</strong><br>
 <br>
-<a href=https://github.com/armbian/cache/actions/workflows/build.yml><img alt="GitHub Workflow Status" src="https://img.shields.io/github/actions/workflow/status/armbian/cache/build.yml?logo=githubactions&label=Build%20Rootfs%20Cache&style=for-the-badge&branch=main"></a>
+<a href=https://github.com/armbian/docker-armbian-build/actions/workflows/build.yml><img alt="GitHub Workflow Status" src="https://img.shields.io/github/actions/workflow/status/armbian/docker-armbian-build/build.yml?logo=githubactions&label=Build%20Rootfs%20Cache&style=for-the-badge&branch=main"></a>
 </a>
 </p>
