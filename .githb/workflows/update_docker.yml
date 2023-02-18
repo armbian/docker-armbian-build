@@ -1,0 +1,23 @@
+name: Build Docker Images
+#
+# Update Docker images we use for building CI
+#
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *' # Scheduled runs every day at 3am UTC
+
+permissions:
+  contents: read
+
+jobs:
+
+  Docker:
+    permissions:
+      contents: none
+
+    if: ${{ github.repository_owner == 'Armbian' }}
+    uses: armbian/scripts/.github/workflows/armbian-framework-docker-images.yml@master
+    secrets:
+      CR_PAT: ${{ secrets.CR_PAT }}
