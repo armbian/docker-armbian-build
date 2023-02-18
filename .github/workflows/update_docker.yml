@@ -8,9 +8,6 @@ on:
   schedule:
     - cron: '0 3 * * *' # Scheduled runs every day at 3am UTC
 
-permissions:
-  contents: write
-
 jobs:
 
   prepare:
