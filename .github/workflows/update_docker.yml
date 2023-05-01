@@ -120,3 +120,5 @@ jobs:
           cache-from: type=gha # all-automatic Github Actions caching
           cache-to: type=gha,mode=max
           tags: ghcr.io/${{ github.repository }}:armbian-${{env.DOCKERFILE_OS}}-${{env.DOCKERFILE_RELEASE}}-latest
+          
+      - uses: gautamkrishnar/keepalive-workflow@v1 # using the workflow with default settings
