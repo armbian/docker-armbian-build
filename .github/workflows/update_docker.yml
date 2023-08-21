@@ -8,60 +8,48 @@ on:
   schedule:
     - cron: '0 3 * * *' # Scheduled runs every day at 3am UTC
 
+permissions:
+  contents: write
+  actions: write
+  packages: write
+
 jobs:
-
-  prepare:
-
-    name: "Prepare JSON"
-    if: ${{ github.repository_owner == 'armbian' }}
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{steps.json.outputs.JSON_CONTENT}}
-    steps:
-
-      - name: Checkout Armbian Framework
-        uses: actions/checkout@v4
-        with:
-          repository: armbian/build
-          ref:  main
-          fetch-depth: 1
-
-      - name: Build JSON
-        id: json
-        run: |
-          # Make a list of valid pairs from our config
-          echo 'JSON_CONTENT<<EOF' >> $GITHUB_OUTPUT
-          
-          # cycle non eos distributions and skip exotics
-          releases=($(grep -rw config/distributions/*/support -ve 'eos' | cut -d"/" -f3 | grep -Ev "bullseye|mantic|sid|trixie|noble"))
-          
-          # extract release name from the distribution
-          for i in ${releases[@]}; do
-              echo "{\"os\":\"$(cat config/distributions/${i}/name | cut -d" " -f1 | sed -e 's/\(.*\)/\L\1/')\",\"release\":\"${i}\"}"
-              done | jq -s >> $GITHUB_OUTPUT
-          echo 'EOF' >> $GITHUB_OUTPUT
 
   Docker:
 
     runs-on: ubuntu-latest
-    name: "Docker image"
-    needs: [ prepare ]
+    if: ${{ github.repository_owner == 'armbian' }}
     strategy:
       fail-fast: false # let other jobs try to complete if one fails
       matrix:
-        include: ${{ fromJSON(needs.prepare.outputs.matrix) }}
-
+        include:
+          - os: "ubuntu"
+            release: "jammy"
+            cache-from: "type=gha,scope=docker_build_jammy" # all-automatic GitHub Actions caching
+            cache-to: "type=gha,scope=docker_build_jammy,mode=max" # all-automatic GitHub Actions caching, max mode
+          - os: "debian"
+            release: "bookworm"
+            cache-from: "" # no caching
+            cache-to: "" # no caching
+          - os: "debian"
+            release: "sid"
+            cache-from: "" # no caching
+            cache-to: "" # no caching
+          - os: "ubuntu"
+            release: "noble"
+            cache-from: "type=gha,scope=docker_build_noble" # all-automatic GitHub Actions caching
+            cache-to: "type=gha,scope=docker_build_noble,mode=max" # all-automatic GitHub Actions caching, max mode
+    name: "${{ matrix.release }} (${{ matrix.os }})"
     env:
       DOCKERFILE_OS: "${{ matrix.os }}"
       DOCKERFILE_RELEASE: "${{ matrix.release }}"
-
     steps:
 
       - name: Checkout Armbian Framework
         uses: actions/checkout@v4
         with:
           repository: armbian/build
-          ref:  main
+          ref: main
           fetch-depth: 1
 
       - name: Set up QEMU
@@ -72,13 +60,12 @@ jobs:
         continue-on-error: true # this process is prone to failure, lets repeat it again if fails
         uses: docker/setup-buildx-action@v3
 
-      - name: Set up Docker Buildx
+      - name: Set up Docker Buildx (retry)
         id: buildx_2
         if: steps.buildx.outcome == 'failure'
-        continue-on-error: true # this process is prone to failure, lets repeat it again if fails
         uses: docker/setup-buildx-action@v3
 
-      - name: Set up Docker Buildx 
+      - name: Set up Docker Buildx
         id: buildx_3
         if: steps.buildx.outcome == 'failure'
         uses: docker/setup-buildx-action@v3
@@ -101,8 +88,11 @@ jobs:
           DOCKERFILE_USE_ARMBIAN_IMAGE_AS_BASE: "no" # Do NOT use the Armbian image as base  image to speed up; we're creating it here
         run: |
           bash ./compile.sh generate-dockerfile
-      - name: Build and push ${{env.DOCKERFILE_OS}}:${{env.DOCKERFILE_RELEASE}}
-        id: docker_build
+
+      - name: Build and push ${{env.DOCKERFILE_OS}}:${{env.DOCKERFILE_RELEASE}} (first try)
+        id: docker_build_first
+        continue-on-error: true
+        timeout-minutes: 40
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -118,18 +108,45 @@ jobs:
             org.opencontainers.image.created=${{ steps.prep.outputs.created }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.licenses=${{ github.event.repository.license.spdx_id }}
-          cache-from: type=gha # all-automatic Github Actions caching
-          cache-to: type=gha,mode=max
+          cache-from: "${{ matrix.cache-from }}"
+          cache-to: "${{ matrix.cache-to }}"
           tags: ghcr.io/${{ github.repository }}:armbian-${{env.DOCKERFILE_OS}}-${{env.DOCKERFILE_RELEASE}}-latest
+
+      - name: sleep a random amount of seconds, up to 60, if build/push failed, before trying again
+        if: steps.docker_build_first.outcome == 'failure'
+        run: |
+          echo "::notice os=${{env.DOCKERFILE_OS}},release=${{env.DOCKERFILE_RELEASE}}::Build/push failed, retrying"
+          sleep $((RANDOM % 60))
+
+      - name: Build and push again (second try if first failed)
+        id: docker_build_second
+        if: steps.docker_build_first.outcome == 'failure'
+        continue-on-error: false # let the build break if the two tries fail
+        timeout-minutes: 40
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64 # arm64 is done under qemu and is _very_ slow. Thanks, GitHub!
+          pull: false # Don't pull when retrying
+          push: true
+          labels: |
+            org.opencontainers.image.title=${{ github.repository }}
+            org.opencontainers.image.description=${{ github.event.repository.description }}
+            org.opencontainers.image.url=${{ github.event.repository.html_url }}
+            org.opencontainers.image.source=${{ github.event.repository.clone_url }}
+            org.opencontainers.image.created=${{ steps.prep.outputs.created }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=${{ github.event.repository.license.spdx_id }}
+          #cache-from: "${{ matrix.cache-from }}" # do NOT reload cache when retrying
+          cache-to: "${{ matrix.cache-to }}" # but do save cache
+          tags: ghcr.io/${{ github.repository }}:armbian-${{env.DOCKERFILE_OS}}-${{env.DOCKERFILE_RELEASE}}-latest
+
 
   Keep:
     name: Keep Alive
     needs: Docker
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      actions: write
-      packages: write
     steps:
       - uses: actions/checkout@v4
       - uses: gautamkrishnar/keepalive-workflow@v2
