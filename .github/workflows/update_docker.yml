@@ -39,7 +39,7 @@ jobs:
           for i in ${releases[@]}; do
               echo "{\"os\":\"$(cat config/distributions/${i}/name | cut -d" " -f1 | sed -e 's/\(.*\)/\L\1/')\",\"release\":\"${i}\"}"
               done | jq -s >> $GITHUB_OUTPUT
-          echo 'EOF' >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT          
   Docker:
 
     runs-on: ubuntu-latest
@@ -120,5 +120,11 @@ jobs:
           cache-from: type=gha # all-automatic Github Actions caching
           cache-to: type=gha,mode=max
           tags: ghcr.io/${{ github.repository }}:armbian-${{env.DOCKERFILE_OS}}-${{env.DOCKERFILE_RELEASE}}-latest
-          
-      - uses: gautamkrishnar/keepalive-workflow@v1 # using the workflow with default settings
+
+  Keep:
+    name: Keep Alive
+    needs: Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: gautamkrishnar/keepalive-workflow@v1 
