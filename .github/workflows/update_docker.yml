@@ -33,7 +33,7 @@ jobs:
           echo 'JSON_CONTENT<<EOF' >> $GITHUB_OUTPUT
           
           # cycle non eos distributions and skip exotics
-          releases=($(grep -rw config/distributions/*/support -ve 'eos' | cut -d"/" -f3 | grep -Ev "bullseye|mantic|sid|trixie"))
+          releases=($(grep -rw config/distributions/*/support -ve 'eos' | cut -d"/" -f3 | grep -Ev "bullseye|mantic|sid|trixie|noble"))
           
           # extract release name from the distribution
           for i in ${releases[@]}; do
