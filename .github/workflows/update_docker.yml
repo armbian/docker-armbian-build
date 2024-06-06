@@ -25,12 +25,24 @@ jobs:
         include:
           - os: "ubuntu"
             release: "jammy"
+            platforms: "linux/amd64,linux/arm64" # linux/riscv64 is on hold - checked 2024-06-06 and it's not at https://hub.docker.com/_/ubuntu/tags?page=&page_size=&ordering=&name=jammy
+            cache-from: "" # no caching
+            cache-to: "" # no caching
           - os: "debian"
             release: "bookworm"
-#          - os: "debian"
-#            release: "sid"
+            platforms: "linux/amd64,linux/arm64" # linux/riscv64 is on hold - checked 2024-06-06 and it's not at https://hub.docker.com/_/debian/tags?page=&page_size=&ordering=&name=bookworm
+            cache-from: "" # no caching
+            cache-to: "" # no caching
+          - os: "debian"
+            release: "sid"
+            platforms: "linux/amd64,linux/arm64" # sid has linux/riscv64, but it doesn't carry packages we need yet (rpardini 2024-06-06)
+            cache-from: "" # no caching
+            cache-to: "" # no caching
           - os: "ubuntu"
             release: "noble"
+            platforms: "linux/amd64,linux/arm64" # linux/riscv64 is on hold - checked 2024-06-06 and it's not at https://hub.docker.com/_/ubuntu/tags?page=&page_size=&ordering=&name=noble
+            cache-from: "" # no caching
+            cache-to: "" # no caching
     name: "${{ matrix.release }} (${{ matrix.os }})"
     env:
       DOCKERFILE_OS: "${{ matrix.os }}"
@@ -88,8 +100,10 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          provenance: false # until ghcr.io doesn't show provenance attestations properly, it reports an unknown/unknown "arch" instead. disable
+          sbom: false # no SBOM for now, ghcr.io doesn't support it and pukes
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64 # arm64 is done under qemu and is _very_ slow. Thanks, GitHub!
+          platforms: "${{ matrix.platforms }}"
           pull: true # Pull new version of base image, always; avoid bit-rot
           push: true
           labels: |
@@ -100,6 +114,8 @@ jobs:
             org.opencontainers.image.created=${{ steps.prep.outputs.created }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.licenses=${{ github.event.repository.license.spdx_id }}
+          cache-from: "${{ matrix.cache-from }}"
+          cache-to: "${{ matrix.cache-to }}"
           tags: ghcr.io/${{ github.repository }}:armbian-${{env.DOCKERFILE_OS}}-${{env.DOCKERFILE_RELEASE}}-latest
 
       - name: sleep a random amount of seconds, up to 60, if build/push failed, before trying again
@@ -116,8 +132,10 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          provenance: false # until ghcr.io doesn't show provenance attestations properly, it reports an unknown/unknown "arch" instead. disable
+          sbom: false # no SBOM for now, ghcr.io doesn't support it and pukes
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64 # arm64 is done under qemu and is _very_ slow. Thanks, GitHub!
+          platforms: "${{ matrix.platforms }}"
           pull: false # Don't pull when retrying
           push: true
           labels: |
@@ -128,6 +146,8 @@ jobs:
             org.opencontainers.image.created=${{ steps.prep.outputs.created }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.licenses=${{ github.event.repository.license.spdx_id }}
+          #cache-from: "${{ matrix.cache-from }}" # do NOT reload cache when retrying
+          cache-to: "${{ matrix.cache-to }}" # but do save cache
           tags: ghcr.io/${{ github.repository }}:armbian-${{env.DOCKERFILE_OS}}-${{env.DOCKERFILE_RELEASE}}-latest
 
 
