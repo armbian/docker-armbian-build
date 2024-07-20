@@ -31,10 +31,10 @@ jobs:
             release: "bookworm"
             cache-from: "" # no caching
             cache-to: "" # no caching
-          - os: "debian"
-            release: "sid"
-            cache-from: "" # no caching
-            cache-to: "" # no caching
+#          - os: "debian"
+#            release: "sid"
+#           cache-from: "" # no caching
+#            cache-to: "" # no caching
           - os: "ubuntu"
             release: "noble"
             cache-from: "type=gha,scope=docker_build_noble" # all-automatic GitHub Actions caching
