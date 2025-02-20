@@ -17,7 +17,6 @@ jobs:
 
   Docker:
 
-    runs-on: ubuntu-latest
     if: ${{ github.repository_owner == 'armbian' }}
     strategy:
       fail-fast: false # let other jobs try to complete if one fails
@@ -26,23 +25,28 @@ jobs:
           - os: "ubuntu"
             release: "jammy"
             platforms: "linux/amd64,linux/arm64" # linux/riscv64 is on hold - checked 2024-06-06 and it's not at https://hub.docker.com/_/ubuntu/tags?page=&page_size=&ordering=&name=jammy
+            runner: "ubuntu-22.04" # Jammy needs to be built on Jammy, lest "qemu segmentation fault"
             cache-from: "" # no caching
             cache-to: "" # no caching
           - os: "debian"
             release: "bookworm"
             platforms: "linux/amd64,linux/arm64" # linux/riscv64 is on hold - checked 2024-06-06 and it's not at https://hub.docker.com/_/debian/tags?page=&page_size=&ordering=&name=bookworm
+            runner: "ubuntu-latest"
             cache-from: "" # no caching
             cache-to: "" # no caching
           - os: "debian"
             release: "sid"
             platforms: "linux/amd64,linux/arm64" # sid has linux/riscv64, but it doesn't carry packages we need yet (rpardini 2024-06-06)
+            runner: "ubuntu-latest"
             cache-from: "" # no caching
             cache-to: "" # no caching
           - os: "ubuntu"
             release: "noble"
             platforms: "linux/amd64,linux/arm64" # linux/riscv64 is on hold - checked 2024-06-06 and it's not at https://hub.docker.com/_/ubuntu/tags?page=&page_size=&ordering=&name=noble
+            runner: "ubuntu-latest"
             cache-from: "" # no caching
             cache-to: "" # no caching
+    runs-on: "${{ matrix.runner }}"
     name: "${{ matrix.release }} (${{ matrix.os }})"
     env:
       DOCKERFILE_OS: "${{ matrix.os }}"
