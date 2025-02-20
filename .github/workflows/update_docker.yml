@@ -15,39 +15,30 @@ permissions:
 
 jobs:
 
-  Docker:
+  docker-per-arch:
 
     if: ${{ github.repository_owner == 'armbian' }}
     strategy:
       fail-fast: false # let other jobs try to complete if one fails
       matrix:
         include:
-          - os: "ubuntu"
-            release: "jammy"
-            platforms: "linux/amd64,linux/arm64" # linux/riscv64 is on hold - checked 2024-06-06 and it's not at https://hub.docker.com/_/ubuntu/tags?page=&page_size=&ordering=&name=jammy
-            runner: "ubuntu-22.04" # Jammy needs to be built on Jammy, lest "qemu segmentation fault"
-            cache-from: "" # no caching
-            cache-to: "" # no caching
-          - os: "debian"
-            release: "bookworm"
-            platforms: "linux/amd64,linux/arm64" # linux/riscv64 is on hold - checked 2024-06-06 and it's not at https://hub.docker.com/_/debian/tags?page=&page_size=&ordering=&name=bookworm
-            runner: "ubuntu-latest"
-            cache-from: "" # no caching
-            cache-to: "" # no caching
-          - os: "debian"
-            release: "sid"
-            platforms: "linux/amd64,linux/arm64" # sid has linux/riscv64, but it doesn't carry packages we need yet (rpardini 2024-06-06)
-            runner: "ubuntu-latest"
-            cache-from: "" # no caching
-            cache-to: "" # no caching
-          - os: "ubuntu"
-            release: "noble"
-            platforms: "linux/amd64,linux/arm64" # linux/riscv64 is on hold - checked 2024-06-06 and it's not at https://hub.docker.com/_/ubuntu/tags?page=&page_size=&ordering=&name=noble
-            runner: "ubuntu-latest"
-            cache-from: "" # no caching
-            cache-to: "" # no caching
+          #### Ubuntu Jammy
+          - { os: "ubuntu", release: "jammy", arch: "amd64", runner: "ubuntu-22.04" }
+          - { os: "ubuntu", release: "jammy", arch: "arm64", runner: "ubuntu-22.04-arm" }
+          #- os: "debian"
+          #  release: "bookworm"
+          #  platforms: "linux/amd64,linux/arm64" # linux/riscv64 is on hold - checked 2024-06-06 and it's not at https://hub.docker.com/_/debian/tags?page=&page_size=&ordering=&name=bookworm
+          #  runner: "ubuntu-latest"
+          #- os: "debian"
+          #  release: "sid"
+          #  platforms: "linux/amd64,linux/arm64" # sid has linux/riscv64, but it doesn't carry packages we need yet (rpardini 2024-06-06)
+          #  runner: "ubuntu-latest"
+          #- os: "ubuntu"
+          #  release: "noble"
+          #  platforms: "linux/amd64,linux/arm64" # linux/riscv64 is on hold - checked 2024-06-06 and it's not at https://hub.docker.com/_/ubuntu/tags?page=&page_size=&ordering=&name=noble
+          #  runner: "ubuntu-latest"
     runs-on: "${{ matrix.runner }}"
-    name: "${{ matrix.release }} (${{ matrix.os }})"
+    name: "${{ matrix.release }} ${{ matrix.arch }} (${{ matrix.os }})"
     env:
       DOCKERFILE_OS: "${{ matrix.os }}"
       DOCKERFILE_RELEASE: "${{ matrix.release }}"
@@ -101,13 +92,13 @@ jobs:
         id: docker_build_first
         continue-on-error: true
         timeout-minutes: 40
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           provenance: false # until ghcr.io doesn't show provenance attestations properly, it reports an unknown/unknown "arch" instead. disable
           sbom: false # no SBOM for now, ghcr.io doesn't support it and pukes
           file: ./Dockerfile
-          platforms: "${{ matrix.platforms }}"
+          platforms: "linux/${{ matrix.arch }}"
           pull: true # Pull new version of base image, always; avoid bit-rot
           push: true
           labels: |
@@ -118,9 +109,7 @@ jobs:
             org.opencontainers.image.created=${{ steps.prep.outputs.created }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.licenses=${{ github.event.repository.license.spdx_id }}
-          cache-from: "${{ matrix.cache-from }}"
-          cache-to: "${{ matrix.cache-to }}"
-          tags: ghcr.io/${{ github.repository }}:armbian-${{env.DOCKERFILE_OS}}-${{env.DOCKERFILE_RELEASE}}-latest
+          tags: ghcr.io/${{ github.repository }}:armbian-${{env.DOCKERFILE_OS}}-${{env.DOCKERFILE_RELEASE}}-${{ matrix.arch }}-latest
 
       - name: sleep a random amount of seconds, up to 60, if build/push failed, before trying again
         if: steps.docker_build_first.outcome == 'failure'
@@ -139,7 +128,7 @@ jobs:
           provenance: false # until ghcr.io doesn't show provenance attestations properly, it reports an unknown/unknown "arch" instead. disable
           sbom: false # no SBOM for now, ghcr.io doesn't support it and pukes
           file: ./Dockerfile
-          platforms: "${{ matrix.platforms }}"
+          platforms: "linux/${{ matrix.arch }}"
           pull: false # Don't pull when retrying
           push: true
           labels: |
@@ -150,14 +139,19 @@ jobs:
             org.opencontainers.image.created=${{ steps.prep.outputs.created }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.licenses=${{ github.event.repository.license.spdx_id }}
-          #cache-from: "${{ matrix.cache-from }}" # do NOT reload cache when retrying
-          cache-to: "${{ matrix.cache-to }}" # but do save cache
-          tags: ghcr.io/${{ github.repository }}:armbian-${{env.DOCKERFILE_OS}}-${{env.DOCKERFILE_RELEASE}}-latest
+          tags: ghcr.io/${{ github.repository }}:armbian-${{env.DOCKERFILE_OS}}-${{env.DOCKERFILE_RELEASE}}-${{ matrix.arch }}-latest
 
+  join-arches:
+    runs-on: ubuntu-latest
+    needs: docker-per-arch
+    # Use docker manifest to join the multi-arch images into a single manifest for each os+release
+    steps:
+      - name: TODO
+        run: echo "TODO"
 
-  Keep:
+  keepalive:
     name: Keep Alive
-    needs: Docker
+    needs: join-arches
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
