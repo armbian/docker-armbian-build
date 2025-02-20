@@ -22,21 +22,13 @@ jobs:
       fail-fast: false # let other jobs try to complete if one fails
       matrix:
         include:
-          #### Ubuntu Jammy
+          #### NOTE(rpardini): needs to be kept in-sync with the second job "join-arches" down below around line 152
           - { os: "ubuntu", release: "jammy", arch: "amd64", runner: "ubuntu-22.04" }
           - { os: "ubuntu", release: "jammy", arch: "arm64", runner: "ubuntu-22.04-arm" }
-          #- os: "debian"
-          #  release: "bookworm"
-          #  platforms: "linux/amd64,linux/arm64" # linux/riscv64 is on hold - checked 2024-06-06 and it's not at https://hub.docker.com/_/debian/tags?page=&page_size=&ordering=&name=bookworm
-          #  runner: "ubuntu-latest"
-          #- os: "debian"
-          #  release: "sid"
-          #  platforms: "linux/amd64,linux/arm64" # sid has linux/riscv64, but it doesn't carry packages we need yet (rpardini 2024-06-06)
-          #  runner: "ubuntu-latest"
-          #- os: "ubuntu"
-          #  release: "noble"
-          #  platforms: "linux/amd64,linux/arm64" # linux/riscv64 is on hold - checked 2024-06-06 and it's not at https://hub.docker.com/_/ubuntu/tags?page=&page_size=&ordering=&name=noble
-          #  runner: "ubuntu-latest"
+          - { os: "debian", release: "bookworm", arch: "amd64", runner: "ubuntu-24.04" }
+          - { os: "debian", release: "bookworm", arch: "arm64", runner: "ubuntu-24.04-arm" }
+          - { os: "ubuntu", release: "noble", arch: "amd64", runner: "ubuntu-24.04" }
+          - { os: "ubuntu", release: "noble", arch: "arm64", runner: "ubuntu-24.04-arm" }
     runs-on: "${{ matrix.runner }}"
     name: "${{ matrix.release }} ${{ matrix.arch }} (${{ matrix.os }})"
     env:
@@ -122,14 +114,14 @@ jobs:
         if: steps.docker_build_first.outcome == 'failure'
         continue-on-error: false # let the build break if the two tries fail
         timeout-minutes: 40
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           provenance: false # until ghcr.io doesn't show provenance attestations properly, it reports an unknown/unknown "arch" instead. disable
           sbom: false # no SBOM for now, ghcr.io doesn't support it and pukes
           file: ./Dockerfile
           platforms: "linux/${{ matrix.arch }}"
-          pull: false # Don't pull when retrying
+          pull: true # Pull new version of base image, always; avoid bit-rot
           push: true
           labels: |
             org.opencontainers.image.title=${{ github.repository }}
@@ -157,13 +149,29 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Create and push multi-arch manifest using buildx
+      - name: ubuntu-jammy - Create and push multi-arch manifest using buildx
         run: |
           docker buildx imagetools create -t \
             ghcr.io/${{ github.repository }}:armbian-ubuntu-jammy-latest \
             ghcr.io/${{ github.repository }}:armbian-ubuntu-jammy-amd64-latest \
             ghcr.io/${{ github.repository }}:armbian-ubuntu-jammy-arm64-latest
           docker buildx imagetools inspect ghcr.io/${{ github.repository }}:armbian-ubuntu-jammy-latest
+
+      - name: debian-bookworm - Create and push multi-arch manifest using buildx
+        run: |
+          docker buildx imagetools create -t \
+            ghcr.io/${{ github.repository }}:armbian-debian-bookworm-latest \
+            ghcr.io/${{ github.repository }}:armbian-debian-bookworm-amd64-latest \
+            ghcr.io/${{ github.repository }}:armbian-debian-bookworm-arm64-latest
+          docker buildx imagetools inspect ghcr.io/${{ github.repository }}:armbian-debian-bookworm-latest
+
+      - name: ubuntu-noble - Create and push multi-arch manifest using buildx
+        run: |
+          docker buildx imagetools create -t \
+            ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-latest \
+            ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-amd64-latest \
+            ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-arm64-latest
+          docker buildx imagetools inspect ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-latest
 
   keepalive:
     if: ${{ github.repository_owner == 'armbian' }}
