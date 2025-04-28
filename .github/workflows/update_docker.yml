@@ -178,8 +178,8 @@ jobs:
     name: Keep Alive
     needs: join-arches
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
     steps:
       - uses: actions/checkout@v4
-      - uses: gautamkrishnar/keepalive-workflow@v2
-        with:
-          use_api: true
+      - uses: liskin/gh-workflow-keepalive@v1
