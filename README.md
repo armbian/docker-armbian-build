@@ -1,9 +1,10 @@
 <p align="center">
-  <a href="#build-framework">
-   <img src="https://raw.githubusercontent.com/armbian/build/master/.github/armbian-logo.png" alt="Armbian logo" width="144">
-  </a><br>
-  <strong>Armbian Build Framework Docker Images Production</strong><br>
-<br>
-<a href=https://github.com/armbian/docker-armbian-build/actions/workflows/update_docker.yml><img alt="GitHub Workflow Status" src="https://img.shields.io/github/actions/workflow/status/armbian/docker-armbian-build/update_docker.yml?logo=githubactions&label=Build%20Docker%20Images&cacheSeconds=600&style=for-the-badge&branch=main"></a>
-</a>
-</p>
+  <h2 align=center><a href="#build-framework">
+  <img src="https://raw.githubusercontent.com/armbian/.github/master/profile/logo.png" alt="Armbian logo" width="25%">
+  </a>
+<br><br>
+</h2>
+
+### What does docker-armbian-build do?
+
+Build and publish Docker images for the [Armbian Build Framework](https://github.com/armbian/build) to support isolated, reproducible, and architecture-independent builds. Images are tagged and pushed to the [GitHub Container Registry](https://github.com/orgs/armbian/packages) for use in CI pipelines, local development, and automation environments.
