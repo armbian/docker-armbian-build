@@ -27,6 +27,8 @@ jobs:
           - { os: "ubuntu", release: "jammy", arch: "arm64", runner: "ubuntu-22.04-arm" }
           - { os: "debian", release: "bookworm", arch: "amd64", runner: "ubuntu-24.04" }
           - { os: "debian", release: "bookworm", arch: "arm64", runner: "ubuntu-24.04-arm" }
+          - { os: "debian", release: "trixie", arch: "amd64", runner: "ubuntu-24.04" }
+          - { os: "debian", release: "trixie", arch: "arm64", runner: "ubuntu-24.04-arm" }
           - { os: "ubuntu", release: "noble", arch: "amd64", runner: "ubuntu-24.04" }
           - { os: "ubuntu", release: "noble", arch: "arm64", runner: "ubuntu-24.04-arm" }
     runs-on: "${{ matrix.runner }}"
