@@ -167,6 +167,14 @@ jobs:
             ghcr.io/${{ github.repository }}:armbian-debian-bookworm-arm64-latest
           docker buildx imagetools inspect ghcr.io/${{ github.repository }}:armbian-debian-bookworm-latest
 
+      - name: debian-trixie - Create and push multi-arch manifest using buildx
+        run: |
+          docker buildx imagetools create -t \
+            ghcr.io/${{ github.repository }}:armbian-debian-trixie-latest \
+            ghcr.io/${{ github.repository }}:armbian-debian-trixie-amd64-latest \
+            ghcr.io/${{ github.repository }}:armbian-debian-trixie-arm64-latest
+          docker buildx imagetools inspect ghcr.io/${{ github.repository }}:armbian-debian-trixie-latest
+
       - name: ubuntu-noble - Create and push multi-arch manifest using buildx
         run: |
           docker buildx imagetools create -t \
