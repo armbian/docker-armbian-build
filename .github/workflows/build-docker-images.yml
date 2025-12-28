@@ -186,7 +186,7 @@ jobs:
               && rm -rf /var/lib/apt/lists/*
 
           # Install Aptly from GitHub releases
-          RUN APTLY_VERSION="1.6.0" && \
+          RUN APTLY_VERSION="1.6.2" && \
               if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
                 APTLY_ARCH="amd64"; \
               elif [ "$(dpkg --print-architecture)" = "arm64" ]; then \
@@ -196,10 +196,10 @@ jobs:
               else \
                 APTLY_ARCH="$(dpkg --print-architecture)"; \
               fi && \
-              wget -q https://github.com/aptly-dev/aptly/releases/download/v${APTLY_VERSION}/aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}.tar.gz && \
-              tar xzf aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}.tar.gz && \
+              wget -q https://github.com/aptly-dev/aptly/releases/download/v${APTLY_VERSION}/aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}.zip && \
+              unzip -q aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}.zip && \
               mv aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}/aptly /usr/local/bin/ && \
-              rm -rf aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}* && \
+              rm -f aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}.zip \
               aptly version
 
           # Install appropriate keyring based on container type
