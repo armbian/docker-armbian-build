@@ -1,4 +1,4 @@
-name: Docker Images for repo handling
+name: Docker Images For Repo Handling
 on:
   push:
     branches:
