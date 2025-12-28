@@ -1,4 +1,4 @@
-name: Build Docker Images
+name: Docker Images for Framework
 #
 # Update Docker images we use for building CI
 #
