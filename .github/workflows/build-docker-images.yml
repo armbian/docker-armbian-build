@@ -41,9 +41,9 @@ jobs:
           for dist_file in armbian-build/config/distributions/*/support; do
             [ -f "$dist_file" ] || continue
 
-            # Check if distribution is marked as "supported" (not "eos" or unsupported)
-            if ! grep -q "supported" "$dist_file"; then
-              echo "::debug::Skipping $(basename $(dirname $dist_file)) - not marked as supported"
+            # Skip distribution if marked as EOS (End of Service)
+            if grep -qi "eos" "$dist_file"; then
+              echo "::debug::Skipping $(basename $(dirname $dist_file)) - marked as EOS"
               continue
             fi
 
@@ -96,11 +96,9 @@ jobs:
                 arm64)
                   docker_platform="linux/arm64"
                   ;;
-                armhf)
-                  docker_platform="linux/arm/v7"
-                  ;;
-                riscv64)
-                  docker_platform="linux/riscv64"
+                armhf|riscv64)
+                  echo "::debug::Skipping $arch - fragile. Will use in the future or drop entirely"
+                  continue
                   ;;
                 *)
                   echo "::warning::Unknown architecture $arch, skipping"
@@ -265,8 +263,8 @@ jobs:
           for dist_file in armbian-build/config/distributions/*/support; do
             [ -f "$dist_file" ] || continue
 
-            # Check if distribution is marked as "supported"
-            if ! grep -q "supported" "$dist_file"; then
+            # Skip distribution if marked as EOS (End of Service)
+            if grep -qi "eos" "$dist_file"; then
               continue
             fi
 
