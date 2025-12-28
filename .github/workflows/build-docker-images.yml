@@ -185,12 +185,22 @@ jobs:
               sudo \
               && rm -rf /var/lib/apt/lists/*
 
-          # Install Aptly from Debian/Ubuntu repositories
-          # (GitHub releases require newer GLIBC than available in older base images)
-          RUN apt-get update && \
-              apt-get install -y aptly && \
-              aptly version && \
-              rm -rf /var/lib/apt/lists/*
+          # Install Aptly from GitHub releases
+          RUN APTLY_VERSION="1.6.0" && \
+              if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
+                APTLY_ARCH="amd64"; \
+              elif [ "$(dpkg --print-architecture)" = "arm64" ]; then \
+                APTLY_ARCH="arm64"; \
+              elif [ "$(dpkg --print-architecture)" = "armhf" ]; then \
+                APTLY_ARCH="arm"; \
+              else \
+                APTLY_ARCH="$(dpkg --print-architecture)"; \
+              fi && \
+              wget -q https://github.com/aptly-dev/aptly/releases/download/v${APTLY_VERSION}/aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}.tar.gz && \
+              tar xzf aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}.tar.gz && \
+              mv aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}/aptly /usr/local/bin/ && \
+              rm -rf aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}* && \
+              aptly version
 
           # Install appropriate keyring based on container type
           RUN if grep -q "debian" /etc/os-release; then \
