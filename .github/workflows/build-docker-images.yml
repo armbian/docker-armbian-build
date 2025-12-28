@@ -1,10 +1,16 @@
-name: Build Repository Update Docker Images
-
+name: Docker Images for repo handling
 on:
   push:
     branches:
       - main
   workflow_dispatch:
+  schedule:
+    - cron: '30 3 * * *' # Scheduled runs every day at 3:30am UTC
+
+permissions:
+  contents: write
+  actions: write
+  packages: write
 
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
