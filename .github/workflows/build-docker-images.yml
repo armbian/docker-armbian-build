@@ -230,7 +230,7 @@ jobs:
           file: ./Dockerfile
           platforms: ${{ matrix.docker_platform }}
           tags: |
-            ${{ env.REGISTRY }}/armbian/repository-update:${{ matrix.release }}-${{ matrix.arch }}
+            ${{ env.REGISTRY }}/repository-update:${{ matrix.release }}-${{ matrix.arch }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           push: true
@@ -292,7 +292,7 @@ jobs:
               [[ "$arch" =~ ^#.*$ ]] && continue
               [ -z "$arch" ] && continue
 
-              image="armbian/repository-update:${release}-${arch}"
+              image="repository-update:${release}-${arch}"
               echo "| $release | $arch | $image |" >> $GITHUB_STEP_SUMMARY
             done
           done
