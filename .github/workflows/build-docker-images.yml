@@ -188,6 +188,7 @@ jobs:
               pv \
               tree \
               whiptail \
+              systemd-sysv \
               && rm -rf /var/lib/apt/lists/*
 
           # Install Aptly from GitHub releases
