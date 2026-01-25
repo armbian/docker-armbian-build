@@ -47,7 +47,10 @@ jobs:
               continue
             fi
 
-            dist_dir=$(dirname "$dist_file")
+            dist_dir=$(dirname "$dist_file")              containerd \
+              iptables \
+              apparmor \
+
             release=$(basename "$dist_dir")
 
             # Get distribution name and family
@@ -189,9 +192,6 @@ jobs:
               tree \
               whiptail \
               systemd-sysv \
-              containerd \
-              iptables \
-              apparmor \
               python3-compose \
               && rm -rf /var/lib/apt/lists/*
 
