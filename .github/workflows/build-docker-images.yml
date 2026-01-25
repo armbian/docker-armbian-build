@@ -181,6 +181,13 @@ jobs:
               curl \
               jq \
               sudo \
+              dialog \
+              lsb-release \
+              iproute2 \
+              figlet \
+              pv \
+              tree \
+              whiptail
               && rm -rf /var/lib/apt/lists/*
 
           # Install Aptly from GitHub releases
