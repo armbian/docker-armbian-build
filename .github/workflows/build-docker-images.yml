@@ -189,6 +189,10 @@ jobs:
               tree \
               whiptail \
               systemd-sysv \
+              containerd \
+              iptables \
+              apparmor \
+              python3-compose \
               && rm -rf /var/lib/apt/lists/*
 
           # Install Aptly from GitHub releases
