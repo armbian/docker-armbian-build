@@ -193,6 +193,7 @@ jobs:
               whiptail \
               systemd-sysv \
               python3-compose \
+              procps \
               && rm -rf /var/lib/apt/lists/*
 
           # Install Aptly from GitHub releases
