@@ -192,7 +192,6 @@ jobs:
               containerd \
               iptables \
               apparmor \
-              python3-compose \
               procps \
               && rm -rf /var/lib/apt/lists/*
 
