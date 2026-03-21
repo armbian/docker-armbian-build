@@ -193,6 +193,7 @@ jobs:
               iptables \
               apparmor \
               procps \
+              udev \
               && rm -rf /var/lib/apt/lists/*
 
           # Install Aptly from GitHub releases
