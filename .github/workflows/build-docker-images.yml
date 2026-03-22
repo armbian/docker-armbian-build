@@ -247,7 +247,8 @@ jobs:
               rm -rf /var/lib/apt/lists/*
 
           # Create armbian user with Docker and sudo permissions
-          RUN useradd -m -s /bin/bash armbian && \
+          RUN groupadd docker 2>/dev/null || true && \
+              useradd -m -s /bin/bash armbian && \
               usermod -aG docker armbian && \
               echo "armbian ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/armbian && \
               chmod 0440 /etc/sudoers.d/armbian
