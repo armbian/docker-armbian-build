@@ -191,13 +191,11 @@ jobs:
               curl \
               jq \
               sudo \
-              dialog \
               lsb-release \
               iproute2 \
               figlet \
               pv \
               tree \
-              whiptail \
               systemd-sysv \
               containerd \
               iptables \
