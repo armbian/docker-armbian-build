@@ -236,7 +236,7 @@ jobs:
           # Add Armbian stable repository
           RUN curl -fsSL http://apt.armbian.com/armbian.key | gpg --dearmor -o /usr/share/keyrings/armbian-archive-keyring.gpg && \
               chmod go+r /usr/share/keyrings/armbian-archive-keyring.gpg && \
-              echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/armbian-archive-keyring.gpg] http://apt.armbian.com bookworm main" > /etc/apt/sources.list.d/armbian.list && \
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/armbian-archive-keyring.gpg] http://apt.armbian.com ${{ matrix.release }} main" > /etc/apt/sources.list.d/armbian.list && \
               apt-get update && \
               rm -rf /var/lib/apt/lists/*
 
@@ -268,55 +268,34 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     steps:
-      - name: Checkout Armbian build framework
-        uses: actions/checkout@v4
-        with:
-          repository: armbian/build
-          ref: main
-          path: armbian-build
-
-      - name: Generate summary
+      - name: Generate summary from matrix
         run: |
           echo '# Docker Images Built' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
-          echo '| Release | Arch | Image |' >> $GITHUB_STEP_SUMMARY
-          echo '|---------|------|-------|' >> $GITHUB_STEP_SUMMARY
+          echo '| Release | Arch | Platform | Image |' >> $GITHUB_STEP_SUMMARY
+          echo '|---------|------|----------|-------|' >> $GITHUB_STEP_SUMMARY
 
-          # Process each distribution
-          for dist_file in armbian-build/config/distributions/*/support; do
-            [ -f "$dist_file" ] || continue
+          # Parse images from setup-matrix output
+          images="${{ needs.setup-matrix.outputs.images }}"
+          if [ -n "$images" ]; then
+            IFS=', ' read -ra IMAGE_ARRAY <<< "$images"
+            for img in "${IMAGE_ARRAY[@]}"; do
+              # Parse "release-arch" format
+              release="${img%-*}"
+              arch="${img#*-}"
 
-            # Skip distribution if marked as EOS (End of Service)
-            if grep -qi "eos" "$dist_file"; then
-              continue
-            fi
+              # Determine platform
+              case "$arch" in
+                amd64) platform="linux/amd64" ;;
+                arm64) platform="linux/arm64" ;;
+                *) platform="unknown" ;;
+              esac
 
-            dist_dir=$(dirname "$dist_file")
-            release=$(basename "$dist_dir")
-
-            # Get distribution name and family
-            dist_name_file="$dist_dir/name"
-            if [ ! -f "$dist_name_file" ]; then
-              continue
-            fi
-
-            # Get architectures file
-            arch_file="$dist_dir/architectures"
-            if [ ! -f "$arch_file" ]; then
-              continue
-            fi
-
-            # Read architectures (comma-separated on one line or one per line)
-            arch_list=$(cat "$arch_file" | tr -d ' \n' | tr ',' ' ')
-            for arch in $arch_list; do
-              # Skip comments and empty lines
-              [[ "$arch" =~ ^#.*$ ]] && continue
-              [ -z "$arch" ] && continue
-
-              image="repository-update:${release}-${arch}"
-              echo "| $release | $arch | $image |" >> $GITHUB_STEP_SUMMARY
+              echo "| $release | $arch | $platform | ${{ env.REGISTRY }}/repository-update:$img |" >> $GITHUB_STEP_SUMMARY
             done
-          done
+          else
+            echo "| No images built | | |" >> $GITHUB_STEP_SUMMARY
+          fi
 
           echo '' >> $GITHUB_STEP_SUMMARY
           echo '✅ Images pushed to GitHub Container Registry' >> $GITHUB_STEP_SUMMARY
