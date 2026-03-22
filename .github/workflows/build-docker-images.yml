@@ -41,14 +41,20 @@ jobs:
           for dist_file in armbian-build/config/distributions/*/support; do
             [ -f "$dist_file" ] || continue
 
+            dist_dir=$(dirname "$dist_file")
+            release=$(basename "$dist_dir")
+
             # Skip distribution if marked as EOS (End of Service)
             if grep -qi "eos" "$dist_file"; then
-              echo "::debug::Skipping $(basename $(dirname $dist_file)) - marked as EOS"
+              echo "::debug::Skipping $release - marked as EOS"
               continue
             fi
 
-            dist_dir=$(dirname "$dist_file")
-            release=$(basename "$dist_dir")
+            # Skip manually disabled releases
+            if [[ "$release" == "sid" ]] || [[ "$release" == "forky" ]]; then
+              echo "::notice::Skipping $release - manually disabled"
+              continue
+            fi
 
             # Get distribution name and family
             dist_name_file="$dist_dir/name"
