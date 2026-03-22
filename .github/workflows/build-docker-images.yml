@@ -191,6 +191,7 @@ jobs:
               curl \
               jq \
               sudo \
+              expect \
               lsb-release \
               iproute2 \
               figlet \
