@@ -176,10 +176,6 @@ jobs:
           RUN groupadd docker && \
               useradd -m -s /bin/bash armbian
 
-          # Create GitHub Actions workspace directory with proper permissions
-          RUN mkdir -p /__w && \
-              chmod 1777 /__w
-
           # Install essential packages
           RUN apt-get update && apt-get install -y \
               wget \
@@ -259,10 +255,9 @@ jobs:
               echo "armbian ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/armbian && \
               chmod 0440 /etc/sudoers.d/armbian
 
-          # Set default user
-          USER armbian
-          ENV HOME=/home/armbian
-          WORKDIR /home/armbian/workspace
+          # NOTE: Don't set USER here. Running as root allows GitHub Actions to work properly.
+          # The workflow can switch to 'armbian' user when needed using: su - armbian -c 'command'
+          WORKDIR /workspace
 
           CMD ["/bin/bash"]
           DOCKEREOF
