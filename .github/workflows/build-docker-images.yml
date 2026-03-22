@@ -172,6 +172,10 @@ jobs:
           ENV ARCH=${{ matrix.arch }} \
               DEBIAN_FRONTEND=noninteractive
 
+          # Create docker group and armbian user early (before package installations)
+          RUN groupadd docker && \
+              useradd -m -s /bin/bash armbian
+
           # Install essential packages
           RUN apt-get update && apt-get install -y \
               wget \
@@ -246,11 +250,9 @@ jobs:
               apt-get update && \
               rm -rf /var/lib/apt/lists/*
 
-          # Create armbian user with Docker and sudo permissions
-          RUN groupadd docker 2>/dev/null || true && \
-              useradd -m -s /bin/bash armbian && \
-              usermod -aG docker armbian && \
-              echo "armbian ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/armbian && \
+          # Add armbian to docker group and configure sudo
+          RUN usermod -aG docker armbian && \
+              echo "armbian ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/armbian && \
               chmod 0440 /etc/sudoers.d/armbian
 
           # Set default user
