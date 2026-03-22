@@ -240,7 +240,17 @@ jobs:
               apt-get update && \
               rm -rf /var/lib/apt/lists/*
 
-          WORKDIR /workspace
+          # Create armbian user with Docker and sudo permissions
+          RUN useradd -m -s /bin/bash armbian && \
+              usermod -aG docker armbian && \
+              echo "armbian ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/armbian && \
+              chmod 0440 /etc/sudoers.d/armbian
+
+          # Set default user
+          USER armbian
+          ENV HOME=/home/armbian
+          WORKDIR /home/armbian/workspace
+
           CMD ["/bin/bash"]
           DOCKEREOF
 
