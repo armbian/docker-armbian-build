@@ -29,8 +29,10 @@ jobs:
           - { os: "debian", release: "bookworm", arch: "arm64", runner: "ubuntu-24.04-arm" }
           - { os: "debian", release: "trixie", arch: "amd64", runner: "ubuntu-24.04" }
           - { os: "debian", release: "trixie", arch: "arm64", runner: "ubuntu-24.04-arm" }
+          - { os: "debian", release: "trixie", arch: "riscv64", runner: "ubuntu-24.04-riscv" }
           - { os: "ubuntu", release: "noble", arch: "amd64", runner: "ubuntu-24.04" }
           - { os: "ubuntu", release: "noble", arch: "arm64", runner: "ubuntu-24.04-arm" }
+          - { os: "ubuntu", release: "noble", arch: "riscv64", runner: "ubuntu-24.04-riscv" }
     runs-on: "${{ matrix.runner }}"
     name: "${{ matrix.release }} ${{ matrix.arch }} (${{ matrix.os }})"
     env:
@@ -42,7 +44,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: armbian/build
-          ref: main
+          ref: fix/docker-riscv64-cross-compilers
           fetch-depth: 1
 
       - name: Set up QEMU
@@ -172,7 +174,8 @@ jobs:
           docker buildx imagetools create -t \
             ghcr.io/${{ github.repository }}:armbian-debian-trixie-latest \
             ghcr.io/${{ github.repository }}:armbian-debian-trixie-amd64-latest \
-            ghcr.io/${{ github.repository }}:armbian-debian-trixie-arm64-latest
+            ghcr.io/${{ github.repository }}:armbian-debian-trixie-arm64-latest \
+            ghcr.io/${{ github.repository }}:armbian-debian-trixie-riscv64-latest
           docker buildx imagetools inspect ghcr.io/${{ github.repository }}:armbian-debian-trixie-latest
 
       - name: ubuntu-noble - Create and push multi-arch manifest using buildx
@@ -180,7 +183,8 @@ jobs:
           docker buildx imagetools create -t \
             ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-latest \
             ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-amd64-latest \
-            ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-arm64-latest
+            ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-arm64-latest \
+            ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-riscv64-latest
           docker buildx imagetools inspect ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-latest
 
   keepalive:
