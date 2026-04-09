@@ -201,6 +201,7 @@ jobs:
               containerd \
               iptables \
               apparmor \
+              python3-yaml \
               procps \
               udev \
               && rm -rf /var/lib/apt/lists/*
