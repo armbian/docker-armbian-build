@@ -51,10 +51,10 @@ jobs:
             fi
 
             # Skip manually disabled releases
-            if [[ "$release" == "sid" ]] || [[ "$release" == "forky" ]]; then
-              echo "::notice::Skipping $release - manually disabled"
-              continue
-            fi
+            #if [[ "$release" == "sid" ]] || [[ "$release" == "forky" ]]; then
+            #  echo "::notice::Skipping $release - manually disabled"
+            #  continue
+            #fi
 
             # Get distribution name and family
             dist_name_file="$dist_dir/name"
