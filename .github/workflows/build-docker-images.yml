@@ -246,7 +246,7 @@ jobs:
           # Add Armbian stable repository
           RUN curl -fsSL http://apt.armbian.com/armbian.key | gpg --dearmor -o /usr/share/keyrings/armbian-archive-keyring.gpg && \
               chmod go+r /usr/share/keyrings/armbian-archive-keyring.gpg && \
-              echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/armbian-archive-keyring.gpg] http://apt.armbian.com ${{ matrix.release }} main" > /etc/apt/sources.list.d/armbian.list && \
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/armbian-archive-keyring.gpg] http://apt.armbian.com ${{ matrix.release }} main ${{ matrix.release }}-utils ${{ matrix.release }}-desktop" > /etc/apt/sources.list.d/armbian.list && \
               apt-get update && \
               rm -rf /var/lib/apt/lists/*
 
