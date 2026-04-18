@@ -39,7 +39,7 @@ jobs:
     steps:
 
       - name: Checkout Armbian Framework
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: armbian/build
           ref: main
@@ -191,5 +191,5 @@ jobs:
     permissions:
       actions: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: liskin/gh-workflow-keepalive@v1
