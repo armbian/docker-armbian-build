@@ -106,8 +106,7 @@ jobs:
                   docker_platform="linux/riscv64"
                   ;;
                 armhf)
-                  echo "::debug::Skipping $arch - fragile. Will use in the future or drop entirely"
-                  continue
+                  docker_platform="linux/arm/v7"
                   ;;
                 *)
                   echo "::warning::Unknown architecture $arch, skipping"
@@ -316,6 +315,7 @@ jobs:
               case "$arch" in
                 amd64)   platform="linux/amd64"   ;;
                 arm64)   platform="linux/arm64"   ;;
+                armhf)   platform="linux/arm/v7"  ;;
                 riscv64) platform="linux/riscv64" ;;
                 *)       platform="unknown"       ;;
               esac
