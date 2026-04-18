@@ -102,7 +102,10 @@ jobs:
                 arm64)
                   docker_platform="linux/arm64"
                   ;;
-                armhf|riscv64)
+                riscv64)
+                  docker_platform="linux/riscv64"
+                  ;;
+                armhf)
                   echo "::debug::Skipping $arch - fragile. Will use in the future or drop entirely"
                   continue
                   ;;
@@ -206,21 +209,28 @@ jobs:
               udev \
               && rm -rf /var/lib/apt/lists/*
 
-          # Install Aptly from GitHub releases
+          # Install Aptly. aptly-dev publishes Linux binaries for amd64,
+          # arm64 and armhf (named 'arm'); riscv64 has no upstream
+          # release — fall back to the distro's aptly package there.
           RUN APTLY_VERSION="1.6.2" && \
-              if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
-                APTLY_ARCH="amd64"; \
-              elif [ "$(dpkg --print-architecture)" = "arm64" ]; then \
-                APTLY_ARCH="arm64"; \
-              elif [ "$(dpkg --print-architecture)" = "armhf" ]; then \
-                APTLY_ARCH="arm"; \
+              DEB_ARCH="$(dpkg --print-architecture)" && \
+              case "$DEB_ARCH" in \
+                amd64)  APTLY_ARCH="amd64" ;; \
+                arm64)  APTLY_ARCH="arm64" ;; \
+                armhf)  APTLY_ARCH="arm"   ;; \
+                *)      APTLY_ARCH=""      ;; \
+              esac && \
+              if [ -n "$APTLY_ARCH" ]; then \
+                wget -q https://github.com/aptly-dev/aptly/releases/download/v${APTLY_VERSION}/aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}.zip && \
+                unzip -q aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}.zip && \
+                mv aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}/aptly /usr/local/bin/ && \
+                rm -rf aptly_${APTLY_VERSION}_linux_${APTLY_ARCH} \
+                       aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}.zip; \
               else \
-                APTLY_ARCH="$(dpkg --print-architecture)"; \
+                apt-get update && \
+                apt-get install -y aptly && \
+                rm -rf /var/lib/apt/lists/*; \
               fi && \
-              wget -q https://github.com/aptly-dev/aptly/releases/download/v${APTLY_VERSION}/aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}.zip && \
-              unzip -q aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}.zip && \
-              mv aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}/aptly /usr/local/bin/ && \
-              rm -f aptly_${APTLY_VERSION}_linux_${APTLY_ARCH}.zip \
               aptly version
 
           # Install appropriate keyring based on container type
@@ -304,9 +314,10 @@ jobs:
 
               # Determine platform
               case "$arch" in
-                amd64) platform="linux/amd64" ;;
-                arm64) platform="linux/arm64" ;;
-                *) platform="unknown" ;;
+                amd64)   platform="linux/amd64"   ;;
+                arm64)   platform="linux/arm64"   ;;
+                riscv64) platform="linux/riscv64" ;;
+                *)       platform="unknown"       ;;
               esac
 
               echo "| $release | $arch | $platform | ${{ env.REGISTRY }}/repository-update:$img |" >> $GITHUB_STEP_SUMMARY
