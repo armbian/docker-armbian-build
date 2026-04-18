@@ -1,0 +1,16 @@
+version: 2
+updates:
+  # Keep the actions used by the two nightly image-build workflows fresh.
+  # There are no Dockerfiles or language manifests in this repo (the
+  # image Dockerfile is generated inline in build-docker-images.yml),
+  # so GitHub Actions is the only ecosystem to track here.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
