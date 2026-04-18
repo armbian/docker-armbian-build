@@ -273,7 +273,7 @@ jobs:
           DOCKEREOF
 
       - name: Build image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile

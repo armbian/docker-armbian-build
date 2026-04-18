@@ -86,7 +86,7 @@ jobs:
         id: docker_build_first
         continue-on-error: true
         timeout-minutes: 40
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           provenance: false # until ghcr.io doesn't show provenance attestations properly, it reports an unknown/unknown "arch" instead. disable
@@ -116,7 +116,7 @@ jobs:
         if: steps.docker_build_first.outcome == 'failure'
         continue-on-error: false # let the build break if the two tries fail
         timeout-minutes: 40
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           provenance: false # until ghcr.io doesn't show provenance attestations properly, it reports an unknown/unknown "arch" instead. disable
