@@ -5,4 +5,7 @@
 
 ### Purpose of This Repository
 
-Build and publish Docker images for the [Armbian Build Framework](https://github.com/armbian/build) to support isolated, reproducible, and architecture-independent builds. Images are tagged and pushed to the [GitHub Container Registry](https://github.com/orgs/armbian/packages) for use in CI pipelines, local development, and automation environments.
+Build and publish Docker images used across Armbian's automation, pushed to the [GitHub Container Registry](https://github.com/orgs/armbian/packages):
+
+- **Build-framework images** for [`armbian/build`](https://github.com/armbian/build) — isolated, reproducible, architecture-independent build environments consumed by `./compile.sh docker …` in CI and local development.
+- **Repository-automation images** for the internal package-publishing pipeline (aptly and supporting tooling), with the supported-release matrix tracking `armbian/build` automatically.
