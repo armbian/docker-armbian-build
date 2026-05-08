@@ -31,6 +31,8 @@ jobs:
           - { os: "debian", release: "trixie", arch: "arm64", runner: "ubuntu-24.04-arm" }
           - { os: "ubuntu", release: "noble", arch: "amd64", runner: "ubuntu-24.04" }
           - { os: "ubuntu", release: "noble", arch: "arm64", runner: "ubuntu-24.04-arm" }
+          - { os: "ubuntu", release: "resolute", arch: "amd64", runner: "ubuntu-24.04" }
+          - { os: "ubuntu", release: "resolute", arch: "arm64", runner: "ubuntu-24.04-arm" }
     runs-on: "${{ matrix.runner }}"
     name: "${{ matrix.release }} ${{ matrix.arch }} (${{ matrix.os }})"
     env:
@@ -182,6 +184,14 @@ jobs:
             ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-amd64-latest \
             ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-arm64-latest
           docker buildx imagetools inspect ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-latest
+
+      - name: ubuntu-resolute - Create and push multi-arch manifest using buildx
+        run: |
+          docker buildx imagetools create -t \
+            ghcr.io/${{ github.repository }}:armbian-ubuntu-resolute-latest \
+            ghcr.io/${{ github.repository }}:armbian-ubuntu-resolute-amd64-latest \
+            ghcr.io/${{ github.repository }}:armbian-ubuntu-resolute-arm64-latest
+          docker buildx imagetools inspect ghcr.io/${{ github.repository }}:armbian-ubuntu-resolute-latest
 
   keepalive:
     if: ${{ github.repository_owner == 'armbian' }}
