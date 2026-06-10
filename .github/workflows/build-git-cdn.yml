@@ -1,0 +1,116 @@
+name: git_cdn Image
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/build-git-cdn.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1' # Weekly, Monday 06:00 UTC — rebuild from upstream master + base-image updates
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
+  GIT_CDN_REF: master
+
+jobs:
+  build:
+    name: "Build git_cdn (multi-arch)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build git_cdn wheel from upstream source
+        run: |
+          set -euo pipefail
+
+          # git_cdn ships only an x86-64 image, so we build the (noarch) wheel
+          # from source and install it per-arch in the Docker build below.
+          git clone --depth 1 --branch "${GIT_CDN_REF}" \
+            https://gitlab.com/grouperenault/git_cdn.git gitcdn-src
+
+          python -m pip install --quiet poetry==2.0.0
+          ( cd gitcdn-src && poetry build -f wheel )
+
+          # Assemble a clean build context (upstream .dockerignore would drop dist/)
+          mkdir -p ctx
+          cp gitcdn-src/dist/git_cdn-*.whl ctx/
+          cp gitcdn-src/config.py ctx/
+          ls -l ctx/
+
+      - name: Create Dockerfile
+        run: |
+          cat > ctx/Dockerfile <<'DOCKEREOF'
+          # git_cdn — caching git+http(s) proxy / CDN (Groupe Renault), built
+          # multi-arch for Armbian. The build stage carries compilers in case a
+          # dependency needs to build an arm64 wheel; the runtime stage is slim
+          # and only needs git (git_cdn shells out to `git http-backend`).
+          FROM python:3.12-slim AS build
+          RUN apt-get update \
+           && apt-get install -y --no-install-recommends \
+                build-essential libffi-dev libssl-dev \
+           && rm -rf /var/lib/apt/lists/*
+          COPY git_cdn-*.whl /tmp/
+          RUN python -m venv /opt/venv \
+           && /opt/venv/bin/pip install --no-cache-dir /tmp/git_cdn-*.whl
+
+          FROM python:3.12-slim
+          WORKDIR /app
+          RUN apt-get update \
+           && apt-get install -y --no-install-recommends \
+                git curl gzip openssl ca-certificates \
+           && rm -rf /var/lib/apt/lists/*
+          COPY --from=build /opt/venv /opt/venv
+          ENV PATH="/opt/venv/bin:$PATH"
+          COPY config.py /app/config.py
+          # Match upstream git tuning; allow partial-clone filters.
+          RUN git config --global pack.threads 4 \
+           && git config --global http.postBuffer 157286400 \
+           && git config --global uploadpack.allowfilter true
+          # Prometheus multiproc needs a writable per-worker dir; off by default,
+          # enable with PROMETHEUS_ENABLED=true + PROMETHEUS_MULTIPROC_DIR.
+          ENV PROMETHEUS_ENABLED=false
+          ENTRYPOINT ["gunicorn", "--worker-tmp-dir", "/dev/shm", "git_cdn.app:app", "-c", "config.py"]
+          CMD ["--bind", ":8000"]
+          EXPOSE 8000
+          DOCKEREOF
+
+      - name: Build and push image
+        uses: docker/build-push-action@v7
+        with:
+          context: ctx
+          file: ctx/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ env.REGISTRY }}/git_cdn:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          push: true
+          load: false
+
+      - name: Image built
+        run: |
+          echo "::notice::Built and pushed ${{ env.REGISTRY }}/git_cdn:latest (linux/amd64, linux/arm64)"
+          echo '# git_cdn image' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo "Pushed \`${{ env.REGISTRY }}/git_cdn:latest\` (linux/amd64, linux/arm64) from upstream \`${GIT_CDN_REF}\` ✅" >> $GITHUB_STEP_SUMMARY
