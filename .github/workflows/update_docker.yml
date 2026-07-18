@@ -33,13 +33,13 @@ jobs:
           - { os: "ubuntu", release: "noble", arch: "arm64", runner: "ubuntu-24.04-arm" }
           - { os: "ubuntu", release: "resolute", arch: "amd64", runner: "ubuntu-24.04" }
           - { os: "ubuntu", release: "resolute", arch: "arm64", runner: "ubuntu-24.04-arm" }
-          #### riscv64: no GitHub-hosted riscv64 runner exists, so these build via QEMU
-          #### emulation on an amd64 runner (setup-qemu-action + platforms: linux/riscv64).
-          #### Only the "supported" releases that list riscv64 in the framework's
-          #### config/distributions/*/architectures (trixie, noble, resolute).
-          - { os: "debian", release: "trixie", arch: "riscv64", runner: "ubuntu-24.04" }
-          - { os: "ubuntu", release: "noble", arch: "riscv64", runner: "ubuntu-24.04" }
-          - { os: "ubuntu", release: "resolute", arch: "riscv64", runner: "ubuntu-24.04" }
+          #### riscv64: built natively on self-hosted riscv64 runners (RV64GC). Only the
+          #### "supported" releases that list riscv64 in the framework's
+          #### config/distributions/*/architectures. resolute (Ubuntu 26.04) is omitted:
+          #### it raised the riscv64 ISA baseline to RVA23 (vector, etc.), which the
+          #### RV64GC runners can't execute (SIGILL); trixie covers the riscv64 build path.
+          - { os: "debian", release: "trixie", arch: "riscv64", runner: "ubuntu-24.04-riscv" }
+          - { os: "ubuntu", release: "noble", arch: "riscv64", runner: "ubuntu-24.04-riscv" }
     runs-on: "${{ matrix.runner }}"
     name: "${{ matrix.release }} ${{ matrix.arch }} (${{ matrix.os }})"
     env:
@@ -88,10 +88,11 @@ jobs:
         env:
           DOCKER_ARMBIAN_BASE_IMAGE: "${{env.DOCKERFILE_OS}}:${{env.DOCKERFILE_RELEASE}}" # Use this base image
           DOCKERFILE_USE_ARMBIAN_IMAGE_AS_BASE: "no" # Do NOT use the Armbian image as base  image to speed up; we're creating it here
-          # Generate for the IMAGE's target arch, not the runner's. riscv64 has no
-          # hosted runner so it builds under QEMU on an amd64 runner; without this the
-          # helper would emit amd64 cross-compilers that don't exist on riscv64. For
-          # amd64/arm64 this equals the runner arch, so it's a no-op there.
+          # Generate the Dockerfile for the IMAGE's target arch, so the helper emits
+          # the right host-dependency set (e.g. no amd64 cross-compilers on riscv64,
+          # which have no installation candidate there). Every job now runs on a
+          # native runner of its arch, so this equals dpkg's value — kept explicit
+          # for robustness and to stay correct if a job is ever emulated again.
           DOCKER_ARMBIAN_HOST_ARCH: "${{ matrix.arch }}"
         run: |
           bash ./compile.sh generate-dockerfile
@@ -204,8 +205,7 @@ jobs:
           docker buildx imagetools create -t \
             ghcr.io/${{ github.repository }}:armbian-ubuntu-resolute-latest \
             ghcr.io/${{ github.repository }}:armbian-ubuntu-resolute-amd64-latest \
-            ghcr.io/${{ github.repository }}:armbian-ubuntu-resolute-arm64-latest \
-            ghcr.io/${{ github.repository }}:armbian-ubuntu-resolute-riscv64-latest
+            ghcr.io/${{ github.repository }}:armbian-ubuntu-resolute-arm64-latest
           docker buildx imagetools inspect ghcr.io/${{ github.repository }}:armbian-ubuntu-resolute-latest
 
   keepalive:
