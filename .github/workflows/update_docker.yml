@@ -88,6 +88,11 @@ jobs:
         env:
           DOCKER_ARMBIAN_BASE_IMAGE: "${{env.DOCKERFILE_OS}}:${{env.DOCKERFILE_RELEASE}}" # Use this base image
           DOCKERFILE_USE_ARMBIAN_IMAGE_AS_BASE: "no" # Do NOT use the Armbian image as base  image to speed up; we're creating it here
+          # Generate for the IMAGE's target arch, not the runner's. riscv64 has no
+          # hosted runner so it builds under QEMU on an amd64 runner; without this the
+          # helper would emit amd64 cross-compilers that don't exist on riscv64. For
+          # amd64/arm64 this equals the runner arch, so it's a no-op there.
+          DOCKER_ARMBIAN_HOST_ARCH: "${{ matrix.arch }}"
         run: |
           bash ./compile.sh generate-dockerfile
 
