@@ -97,6 +97,33 @@ jobs:
         run: |
           bash ./compile.sh generate-dockerfile
 
+      # Install GCC 13 (native + cross) alongside the default compiler on
+      # releases whose default gcc is newer than 13 and breaks some vendor
+      # sources: Trixie (gcc-14) and Resolute (gcc-15). Noble is skipped - its
+      # default already is gcc-13. The generated Dockerfile runs as root
+      # throughout (no USER switch), so appending this RUN at the end is safe.
+      # The aarch64/armhf/riscv64 cross toolchains are what the amd64/arm64
+      # build hosts use to cross-compile kernels & u-boot; they are skipped on
+      # the riscv64 image, where the arm cross packages have no candidate (and
+      # riscv64 builds natively anyway).
+      - name: Install GCC 13 alongside the default compiler (Trixie/Resolute)
+        if: ${{ env.DOCKERFILE_RELEASE == 'trixie' || env.DOCKERFILE_RELEASE == 'resolute' }}
+        run: |
+          cat >> Dockerfile <<'DOCKEREOF'
+
+          # Install GCC 13 alongside the default compiler (default gcc is newer here)
+          RUN echo "--> Installing GCC 13 (native + cross) alongside the default compiler" && \
+              DEBIAN_FRONTEND=noninteractive apt-get -y update && \
+              DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends gcc-13 g++-13 && \
+              if [ "$(dpkg --print-architecture)" != "riscv64" ]; then \
+                DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+                  gcc-13-aarch64-linux-gnu g++-13-aarch64-linux-gnu \
+                  gcc-13-arm-linux-gnueabihf g++-13-arm-linux-gnueabihf \
+                  gcc-13-riscv64-linux-gnu g++-13-riscv64-linux-gnu; \
+              fi && \
+              rm -rf /var/lib/apt/lists/*
+          DOCKEREOF
+
       - name: Build and push ${{env.DOCKERFILE_OS}}:${{env.DOCKERFILE_RELEASE}} (first try)
         id: docker_build_first
         continue-on-error: true
