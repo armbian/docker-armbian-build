@@ -105,7 +105,9 @@ jobs:
       # The aarch64/armhf/riscv64 cross toolchains are what the amd64/arm64
       # build hosts use to cross-compile kernels & u-boot; they are skipped on
       # the riscv64 image, where the arm cross packages have no candidate (and
-      # riscv64 builds natively anyway).
+      # riscv64 builds natively anyway). gcc-13-arm-linux-gnueabi (soft-float,
+      # C only - matching the default gcc-arm-linux-gnueabi) is for the TI K3 R5
+      # first-stage SPL (tiboot3), which is built with GCC 13 to fit its SRAM.
       - name: Install GCC 13 alongside the default compiler (Trixie/Resolute)
         if: ${{ env.DOCKERFILE_RELEASE == 'trixie' || env.DOCKERFILE_RELEASE == 'resolute' }}
         run: |
@@ -118,6 +120,7 @@ jobs:
               if [ "$(dpkg --print-architecture)" != "riscv64" ]; then \
                 DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
                   gcc-13-aarch64-linux-gnu g++-13-aarch64-linux-gnu \
+                  gcc-13-arm-linux-gnueabi \
                   gcc-13-arm-linux-gnueabihf g++-13-arm-linux-gnueabihf \
                   gcc-13-riscv64-linux-gnu g++-13-riscv64-linux-gnu; \
               fi && \
