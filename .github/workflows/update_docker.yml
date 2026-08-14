@@ -38,8 +38,13 @@ jobs:
           #### config/distributions/*/architectures. resolute (Ubuntu 26.04) is omitted:
           #### it raised the riscv64 ISA baseline to RVA23 (vector, etc.), which the
           #### RV64GC runners can't execute (SIGILL); trixie covers the riscv64 build path.
-          - { os: "debian", release: "trixie", arch: "riscv64", runner: "ubuntu-24.04-riscv" }
-          - { os: "ubuntu", release: "noble", arch: "riscv64", runner: "ubuntu-24.04-riscv" }
+          ####
+          #### GATED OFF: the 3rd-party self-hosted riscv64 runners are offline, so these
+          #### jobs stall and get cancelled, taking join-arches + Keep Alive down with
+          #### them. Re-enable by uncommenting these two entries AND restoring the
+          #### riscv64 manifest tags in join-arches below.
+          # - { os: "debian", release: "trixie", arch: "riscv64", runner: "ubuntu-24.04-riscv" }
+          # - { os: "ubuntu", release: "noble", arch: "riscv64", runner: "ubuntu-24.04-riscv" }
     runs-on: "${{ matrix.runner }}"
     name: "${{ matrix.release }} ${{ matrix.arch }} (${{ matrix.os }})"
     env:
@@ -217,8 +222,7 @@ jobs:
           docker buildx imagetools create -t \
             ghcr.io/${{ github.repository }}:armbian-debian-trixie-latest \
             ghcr.io/${{ github.repository }}:armbian-debian-trixie-amd64-latest \
-            ghcr.io/${{ github.repository }}:armbian-debian-trixie-arm64-latest \
-            ghcr.io/${{ github.repository }}:armbian-debian-trixie-riscv64-latest
+            ghcr.io/${{ github.repository }}:armbian-debian-trixie-arm64-latest
           docker buildx imagetools inspect ghcr.io/${{ github.repository }}:armbian-debian-trixie-latest
 
       - name: ubuntu-noble - Create and push multi-arch manifest using buildx
@@ -226,8 +230,7 @@ jobs:
           docker buildx imagetools create -t \
             ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-latest \
             ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-amd64-latest \
-            ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-arm64-latest \
-            ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-riscv64-latest
+            ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-arm64-latest
           docker buildx imagetools inspect ghcr.io/${{ github.repository }}:armbian-ubuntu-noble-latest
 
       - name: ubuntu-resolute - Create and push multi-arch manifest using buildx
