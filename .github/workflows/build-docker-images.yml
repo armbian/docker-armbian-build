@@ -259,6 +259,24 @@ jobs:
               apt-get update && \
               rm -rf /var/lib/apt/lists/*
 
+          # Provide a minimal /etc/armbian-release. armbian-config's kernel/repository
+          # logic reads BOARD, LINUXFAMILY and BRANCH from it (the repository switch
+          # resolves linux-image-${BRANCH}-${LINUXFAMILY}); without them stable/rolling
+          # switching fails. Generate it directly instead of installing the full BSP,
+          # which would drag in Armbian base-files, u-boot-tools, initramfs-tools, ... and
+          # mutate the container. BRANCH=edge is published for every UEFI arch. armhf has
+          # no UEFI family and is not used for this, so it is left without the file.
+          RUN case "$(dpkg --print-architecture)" in \
+                amd64)   board="uefi-x86";     fam="x86" ;; \
+                arm64)   board="uefi-arm64";   fam="arm64" ;; \
+                riscv64) board="uefi-riscv64"; fam="riscv64" ;; \
+                *)       fam="" ;; \
+              esac; \
+              if [ -n "$fam" ]; then \
+                printf 'BOARD=%s\nBOARDFAMILY=%s\nLINUXFAMILY=%s\nBRANCH=edge\nIMAGE_TYPE=stable\nVENDOR=Armbian\n' \
+                  "$board" "$board" "$fam" > /etc/armbian-release; \
+              fi
+
           # Add armbian to docker group and configure sudo
           RUN usermod -aG docker armbian && \
               echo "armbian ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/armbian && \
