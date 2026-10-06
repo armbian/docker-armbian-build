@@ -48,7 +48,8 @@ jobs:
           RUN apt-get update && \
               apt-get install -y --no-install-recommends \
                 apt-cacher-ng \
-                ca-certificates && \
+                ca-certificates \
+                curl && \
               rm -rf /var/lib/apt/lists/*
 
           # Override config: cache on a bind-mountable volume, run in the
@@ -63,10 +64,50 @@ jobs:
                 'VerboseLog: 0' \
                 > /etc/apt-cacher-ng/zzz_armbian.conf
 
+          # Fetch Armbian repositories from mirrors directly, not through the
+          # apt/beta.armbian.com redirector: through it, apt update fails with
+          # "File has unexpected size ... Mirror sync in progress?".
+          # The start script refreshes the mirror lists from the redirector;
+          # these two plain-HTTP mirrors are the fallback.
+          RUN printf '%s\n' \
+                'http://fi.mirror.armbian.de/apt/' \
+                'http://armbian.lv.auroradev.org/apt/' \
+                > /etc/apt-cacher-ng/backends_armbian_apt && \
+              printf '%s\n' \
+                'http://fi.mirror.armbian.de/beta/' \
+                'http://armbian.lv.auroradev.org/beta/' \
+                > /etc/apt-cacher-ng/backends_armbian_beta && \
+              printf '%s\n' \
+                'Remap-armapt: apt.armbian.com ; file:backends_armbian_apt' \
+                'Remap-armbeta: beta.armbian.com ; file:backends_armbian_beta' \
+                > /etc/apt-cacher-ng/zzzz_armbian_remap.conf
+
+          # Build the mirror lists from the redirector at start. Keep mirrors
+          # that serve InRelease and answer 404 for a missing file (prefer
+          # HTTPS), in random order so hosts spread the load.
+          COPY --chmod=0755 <<'EOS' /usr/local/sbin/armbian-acng-start
+          #!/bin/sh
+          for repo in apt beta; do
+          	good=""
+          	for url in $(curl -fsS -m 15 "http://${repo}.armbian.com/mirrors" | grep -o '"http[^"]*"' | tr -d '"' | sort -u | shuf); do
+          		for try in "https://${url#http://}" "${url}"; do
+          			curl -fsS -m 10 -o /dev/null "${try}dists/noble/InRelease" || continue
+          			[ "$(curl -sS -m 10 -o /dev/null -w '%{http_code}' "${try}dists/noble/missing")" = 404 ] || continue
+          			good="${good}${try}
+          "
+          			break
+          		done
+          	done
+          	[ -n "${good}" ] && printf '%s' "${good}" > "/etc/apt-cacher-ng/backends_armbian_${repo}"
+          	echo "armbian-acng-start: ${repo}: $(tr '\n' ' ' < "/etc/apt-cacher-ng/backends_armbian_${repo}")"
+          done
+          exec /usr/sbin/apt-cacher-ng -c /etc/apt-cacher-ng
+          EOS
+
           VOLUME ["/var/cache/apt-cacher-ng"]
           EXPOSE 3142
 
-          CMD ["/usr/sbin/apt-cacher-ng", "-c", "/etc/apt-cacher-ng"]
+          CMD ["/usr/local/sbin/armbian-acng-start"]
           DOCKEREOF
 
       - name: Build and push image
