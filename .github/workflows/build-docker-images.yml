@@ -51,7 +51,7 @@ jobs:
             fi
 
             # Skip manually disabled releases
-            if [[ "$release" == "sid" ]] || [[ "$release" == "forky" ]]; then
+            if [[ "$release" == "sid" ]]; then
               echo "::notice::Skipping $release - manually disabled"
               continue
             fi
@@ -243,7 +243,9 @@ jobs:
                 rm -rf /var/lib/apt/lists/*; \
               fi
 
-          # Install GitHub CLI
+          # Install GitHub CLI. CACHE_BUST changes each run: the build cache
+          # must not keep an old signing key after GitHub rotates it.
+          ARG CACHE_BUST
           RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
               dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
               chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg && \
@@ -297,6 +299,8 @@ jobs:
           platforms: ${{ matrix.docker_platform }}
           tags: |
             ${{ env.REGISTRY }}/repository-update:${{ matrix.release }}-${{ matrix.arch }}
+          build-args: |
+            CACHE_BUST=${{ github.run_id }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           push: true
