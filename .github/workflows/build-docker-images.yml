@@ -243,23 +243,17 @@ jobs:
                 rm -rf /var/lib/apt/lists/*; \
               fi
 
-          # Install GitHub CLI. CACHE_BUST changes each run: the build cache
-          # must not keep an old signing key after GitHub rotates it.
+          # Add the Armbian beta repository and install GitHub CLI from it.
+          # Beta has gh for all architectures, riscv64 included. CACHE_BUST
+          # changes each run, so the image gets the latest gh.
           ARG CACHE_BUST
-          RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
-              dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
-              chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg && \
-              echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list && \
-              apt-get update && \
-              apt-get install -y gh && \
-              rm -rf /var/lib/apt/lists/*
-
-          # Add Armbian stable repository
           RUN curl -fsSL http://apt.armbian.com/armbian.key | gpg --dearmor -o /usr/share/keyrings/armbian-archive-keyring.gpg && \
               chmod go+r /usr/share/keyrings/armbian-archive-keyring.gpg && \
-              echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/armbian-archive-keyring.gpg] http://apt.armbian.com ${{ matrix.release }} main ${{ matrix.release }}-utils ${{ matrix.release }}-desktop" > /etc/apt/sources.list.d/armbian.list && \
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/armbian-archive-keyring.gpg] http://beta.armbian.com ${{ matrix.release }} main ${{ matrix.release }}-utils ${{ matrix.release }}-desktop" > /etc/apt/sources.list.d/armbian.list && \
               apt-get update && \
-              rm -rf /var/lib/apt/lists/*
+              apt-get install -y gh && \
+              rm -rf /var/lib/apt/lists/* && \
+              gh --version
 
           # Provide a minimal /etc/armbian-release. armbian-config's kernel/repository
           # logic reads BOARD, LINUXFAMILY and BRANCH from it (the repository switch
