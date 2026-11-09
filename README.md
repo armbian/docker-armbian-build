@@ -37,7 +37,7 @@ LICENSE                    # GNU GPL v3
 README.md
 ```
 
-The repository contains no application source code of its own: all build logic lives inside the GitHub Actions workflow definitions under `.github/workflows/` (YAML with inline `bash` for Dockerfile generation and matrix construction).
+The repository contains no application source code of its own: all build logic lives inside the GitHub Actions workflow definitions under `.github/workflows/` (YAML with inline Bash for Dockerfile generation and matrix construction).
 
 ## Continuous Integration
 
