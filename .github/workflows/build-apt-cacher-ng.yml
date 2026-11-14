@@ -82,26 +82,100 @@ jobs:
                 'Remap-armbeta: beta.armbian.com ; file:backends_armbian_beta' \
                 > /etc/apt-cacher-ng/zzzz_armbian_remap.conf
 
-          # Build the mirror lists from the redirector at start. Keep mirrors
-          # that serve InRelease and answer 404 for a missing file (prefer
-          # HTTPS), in random order so hosts spread the load.
+          # Keep the Armbian mirror lists current: refresh them from the
+          # redirector every 5 minutes, restart apt-cacher-ng when a mirror is behind.
           COPY --chmod=0755 <<'EOS' /usr/local/sbin/armbian-acng-start
           #!/bin/sh
-          for repo in apt beta; do
-          	good=""
-          	for url in $(curl -fsS -m 15 "http://${repo}.armbian.com/mirrors" | grep -o '"http[^"]*"' | tr -d '"' | sort -u | shuf); do
-          		for try in "https://${url#http://}" "${url}"; do
-          			curl -fsS -m 10 -o /dev/null "${try}dists/noble/InRelease" || continue
-          			[ "$(curl -sS -m 10 -o /dev/null -w '%{http_code}' "${try}dists/noble/missing")" = 404 ] || continue
-          			good="${good}${try}
-          "
-          			break
-          		done
+          # Keep the Armbian mirror lists current. apt-cacher-ng reads them only at start.
+          conf=/etc/apt-cacher-ng
+          interval="${ARMBIAN_MIRROR_REFRESH:-300}"
+
+          # Print "<control stamp> <url>" when a mirror serves InRelease and answers 404
+          # for a missing file. Prefer HTTPS.
+          probe() {
+          	for try in "https://${1#*://}" "${1}"; do
+          		curl -fsS -m 10 -o /dev/null "${try}dists/noble/InRelease" || continue
+          		[ "$(curl -sS -m 10 -o /dev/null -w '%{http_code}' "${try}dists/noble/missing")" = 404 ] || continue
+          		stamp=$(curl -fsSL -m 10 "${try}control" | tr -cd 0-9)
+          		echo "${stamp:-0} ${try}"
+          		return
           	done
-          	[ -n "${good}" ] && printf '%s' "${good}" > "/etc/apt-cacher-ng/backends_armbian_${repo}"
-          	echo "armbian-acng-start: ${repo}: $(tr '\n' ' ' < "/etc/apt-cacher-ng/backends_armbian_${repo}")"
+          }
+
+          # Probe all mirrors of a repository from the redirector at the same time.
+          probe_all() {
+          	tmp=$(mktemp -d)
+          	n=0
+          	for url in $(curl -fsS -m 15 "http://${1}.armbian.com/mirrors" | grep -o '"http[^"]*"' | tr -d '"' | sort -u); do
+          		n=$((n + 1))
+          		probe "${url}" > "${tmp}/${n}" &
+          	done
+          	wait
+          	cat "${tmp}"/* 2> /dev/null
+          	rm -rf "${tmp}"
+          }
+
+          # Write the mirror lists: the mirrors with the newest control stamp.
+          # Armbian mirrors first: they sync right after a publish. Random order in each group.
+          # $1 = start: write the lists. Else write them only when a listed mirror is behind:
+          # a mirror that times out once must not cause a restart.
+          # Return 1 when a list changed.
+          update() {
+          	changed=0
+          	for repo in apt beta; do
+          		file="${conf}/backends_armbian_${repo}"
+          		all=$(probe_all "${repo}")
+          		newest=$(printf '%s\n' "${all}" | sort -n | tail -n 1 | cut -d ' ' -f 1)
+          		# Redirector not reachable: keep the current list.
+          		[ -n "${newest}" ] || continue
+          		new=$(printf '%s\n' "${all}" | awk -v n="${newest}" 'NF == 2 && $1 == n { print $2 }' | shuf |
+          			awk '/\.armbian\.(com|de)\// { print; next } { rest = rest $0 "\n" } END { printf "%s", rest }')
+          		if [ "${1}" = start ]; then
+          			[ "$(printf '%s\n' "${new}" | sort)" = "$(sort "${file}")" ] && continue
+          		else
+          			behind=$(printf '%s\n' "${all}" | awk -v n="${newest}" 'NF == 2 && $1 != n { sub(/^[a-z]+:\/\//, "", $2); print $2 }')
+          			listed=$(sed 's|^[a-z]*://||' "${file}")
+          			[ -n "${behind}" ] && [ -n "${listed}" ] || continue
+          			printf '%s\n' "${behind}" | grep -qxF "${listed}" || continue
+          		fi
+          		printf '%s\n' "${new}" > "${file}"
+          		changed=1
+          		echo "armbian-acng-start: ${repo}: $(tr '\n' ' ' < "${file}")"
+          	done
+          	return "${changed}"
+          }
+
+          # Wait for the background process $1 and return its status.
+          # apt-cacher-ng stopped: exit, and Docker restarts the container.
+          watch() {
+          	while kill -0 "${1}" 2> /dev/null; do
+          		sleep 2 &
+          		wait $!
+          		kill -0 "${pid}" 2> /dev/null || exit 1
+          	done
+          	wait "${1}"
+          }
+
+          trap 'kill "${pid}" 2> /dev/null; wait "${pid}"; exit 0' INT TERM
+          # Serve at once with the current lists. The first update follows right away.
+          # update and sleep run in the background: a stop does not wait for them.
+          mode=start
+          while :; do
+          	/usr/sbin/apt-cacher-ng -c "${conf}" &
+          	pid=$!
+          	while :; do
+          		update "${mode}" &
+          		watch $!
+          		rc=$?
+          		mode=refresh
+          		[ "${rc}" = 0 ] || break
+          		sleep "${interval}" &
+          		watch $!
+          	done
+          	echo "armbian-acng-start: mirror list changed, restart apt-cacher-ng"
+          	kill "${pid}"
+          	wait "${pid}"
           done
-          exec /usr/sbin/apt-cacher-ng -c /etc/apt-cacher-ng
           EOS
 
           VOLUME ["/var/cache/apt-cacher-ng"]
