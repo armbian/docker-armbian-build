@@ -7,13 +7,13 @@
 
 ## Purpose of This Repository
 
-Builds and publishes the Docker images Armbian uses across its build framework and infrastructure automation, pushing multi-arch images to the [GitHub Container Registry](https://github.com/orgs/armbian/packages). All Dockerfiles are generated on the fly inside GitHub Actions workflows rather than committed as files.
+Builds and publishes the Docker images Armbian uses across its build framework and supporting infrastructure, pushing multi-arch images to the [GitHub Container Registry](https://github.com/orgs/armbian/packages). All Dockerfiles are generated on the fly inside GitHub Actions workflows rather than committed as files to the repository.
 
 ## Published Images
 
 | Image | Tags | Purpose |
 | --- | --- | --- |
-| `ghcr.io/armbian/docker-armbian-build` | `armbian-<os>-<release>-<arch>-latest` | Build environments used by [`armbian/build`](https://github.com/armbian/build)'s `./compile.sh docker …` flow. One tag per supported `(os, release, arch)` combination (Ubuntu jammy/noble/resolute, Debian bookworm/trixie; `amd64`, `arm64`, and `riscv64` where supported). |
+| `ghcr.io/armbian/docker-armbian-build` | `armbian-<os>-<release>-<arch>-latest` | Build environments used by [`armbian/build`](https://github.com/armbian/build)'s `./compile.sh docker …` flow. One tag per supported `(os, release, arch)` combination (Ubuntu `jammy`/`noble`/`resolute`, Debian `bookworm`/`trixie`; `amd64`, `arm64`, and `riscv64` where supported). |
 | `ghcr.io/armbian/repository-update` | `<release>-<arch>` | Internal package-publishing pipeline (ships `aptly` plus the keyrings and helpers needed to sign and push the Armbian apt repositories). Matrix is generated from `armbian/build`'s `config/distributions/*` support flags. |
 | `ghcr.io/armbian/apt-cacher-ng` | `latest`, `trixie` | Current `apt-cacher-ng` from Debian trixie, pre-configured with Armbian mirror remaps and an entrypoint that discovers live mirrors from `apt.armbian.com` / `beta.armbian.com`. Replaces the abandoned `sameersbn/apt-cacher-ng:3.3` image. Backs `armbian-config`'s `module_aptcacherng`. |
 | `ghcr.io/armbian/git_cdn` | `latest` | Multi-arch build of Groupe Renault's [git_cdn](https://gitlab.com/grouperenault/git_cdn), the caching git+http(s) proxy / CDN. Backs `armbian-config`'s `module_git_cdn`. |
@@ -23,7 +23,7 @@ All images are built multi-arch (`linux/amd64` + `linux/arm64`, plus `linux/risc
 ## How It Works
 
 - The build-framework matrix (`docker-armbian-build` image tags) and the repository-update matrix are generated at run time from `armbian/build`'s `config/distributions/*/support` (releases marked EOS are skipped) and `architectures` files, so supported releases track the upstream framework automatically.
-- Dockerfiles for the per-release framework images are produced by `./compile.sh generate-dockerfile` from a checkout of `armbian/build`. For `trixie` and `resolute` an additional layer installs GCC 13 (native + cross toolchains) alongside the newer default compiler, which some vendor sources require.
+- Dockerfiles for the per-release framework images are produced by `./compile.sh generate-dockerfile` from a checkout of `armbian/build`. For `trixie` and `resolute` an additional layer installs GCC 13 (native + cross toolchains) alongside the newer default compiler, which some vendor sources still require.
 - `apt-cacher-ng` and `git_cdn` images are self-contained: their Dockerfiles are written inline in their workflows, built with `docker/build-push-action`, and pushed with GHA cache (`type=gha`).
 - A watchdog job runs every 15 minutes and automatically re-runs failed jobs (up to 3 attempts) for the daily framework and repository-update builds, so transient registry/network failures self-heal.
 
